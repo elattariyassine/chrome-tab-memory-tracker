@@ -3,41 +3,46 @@ import { TabInfo, Settings, TabMemoryHistory } from './types';
 // Default settings
 const DEFAULT_SETTINGS: Settings = {
   darkMode: false,
-  detailedView: true,
-  autoReload: false,
+  detailedView: false,
+  autoReload: true,
   autoSnooze: false,
-  memoryThreshold: 500,
+  memoryThreshold: 100,
   snoozeDuration: 30,
-  refreshInterval: 5000,
+  refreshInterval: 60000,
   showOverlay: true,
-  overlayColor: '#000000',
-  historyLength: 50,
+  overlayColor: '#ff0000',
+  historyLength: 10,
 };
 
 let currentSettings: Settings = DEFAULT_SETTINGS;
 const snoozeTimeouts: { [tabId: number]: number } = {};
 const tabsHistory: { [tabId: number]: TabMemoryHistory[] } = {};
 
+interface ChromeProcess {
+  privateMemory?: number;
+  jsMemoryAllocated?: number;
+  sharedMemory?: number;
+  tasks?: { tabId: number }[];
+}
+
 // Function to update tab memory history
-export function updateTabMemoryHistory(tab: TabInfo, memoryUsage: number, historyLength: number = 50): TabInfo {
+export function updateTabMemoryHistory(tab: TabInfo, memoryUsage: number, historyLength: number = currentSettings.historyLength): TabInfo {
   if (!tabsHistory[tab.id]) {
     tabsHistory[tab.id] = [];
   }
 
-  // Add new memory usage to history
-  tabsHistory[tab.id].unshift({
+  // Create a new history entry
+  const newEntry = {
     timestamp: Date.now(),
     memory: memoryUsage,
-  });
+  };
 
-  // Limit history length
-  if (tabsHistory[tab.id].length > historyLength) {
-    tabsHistory[tab.id] = tabsHistory[tab.id].slice(0, historyLength);
-  }
+  // Update the history array
+  tabsHistory[tab.id] = [newEntry, ...tabsHistory[tab.id]].slice(0, historyLength);
 
   return {
     ...tab,
-    history: [...tabsHistory[tab.id]],
+    history: tabsHistory[tab.id],
     isHighMemory: memoryUsage > currentSettings.memoryThreshold,
   };
 }
@@ -46,8 +51,8 @@ export function updateTabMemoryHistory(tab: TabInfo, memoryUsage: number, histor
 export async function getTabMemoryUsage(tab: chrome.tabs.Tab): Promise<number> {
   try {
     // Get process info for the tab
-    const processes = await chrome.processes.getProcessInfo(["memory"]);
-    const tabProcess = processes.find(process => {
+    const processes = await (chrome as any).processes.getProcessInfo(["memory"]) as ChromeProcess[];
+    const tabProcess = processes.find((process: ChromeProcess) => {
       return process.tasks?.some(task => task.tabId === tab.id);
     });
 
@@ -85,16 +90,10 @@ export async function handleHighMemoryTab(tab: chrome.tabs.Tab, memoryUsage: num
   const isHighMemory = memoryUsage > currentSettings.memoryThreshold;
   
   if (isHighMemory) {
-    if (currentSettings.autoReload) {
-      try {
-        await chrome.tabs.reload(tab.id);
-        console.log(`Auto-reloaded high memory tab: ${tab.id}`);
-      } catch (error) {
-        console.error(`Error auto-reloading tab ${tab.id}:`, error);
-      }
-    }
+    // Load current settings to ensure we have the latest values
+    await loadSettings();
 
-    if (currentSettings.autoSnooze && !tab.url.startsWith('chrome://')) {
+    if (currentSettings.autoSnooze && tab.url && !tab.url.startsWith('chrome://')) {
       try {
         // Clear any existing snooze timeout for this tab
         if (snoozeTimeouts[tab.id]) {
@@ -120,6 +119,13 @@ export async function handleHighMemoryTab(tab: chrome.tabs.Tab, memoryUsage: num
         }
       } catch (error) {
         console.error(`Error auto-snoozing tab ${tab.id}:`, error);
+      }
+    } else if (currentSettings.autoReload) {
+      try {
+        await chrome.tabs.reload(tab.id);
+        console.log(`Auto-reloaded high memory tab: ${tab.id}`);
+      } catch (error) {
+        console.error(`Error auto-reloading tab ${tab.id}:`, error);
       }
     }
   }
@@ -154,7 +160,9 @@ export function loadSettings(): Promise<Settings> {
   return new Promise((resolve) => {
     chrome.storage.sync.get(['settings'], (result) => {
       if (result.settings) {
-        currentSettings = result.settings;
+        currentSettings = { ...DEFAULT_SETTINGS, ...result.settings };
+      } else {
+        currentSettings = { ...DEFAULT_SETTINGS };
       }
       resolve(currentSettings);
     });
@@ -165,7 +173,7 @@ export function loadSettings(): Promise<Settings> {
 export function saveSettings(settings: Settings): Promise<void> {
   return new Promise((resolve) => {
     chrome.storage.sync.set({ settings }, () => {
-      currentSettings = settings;
+      currentSettings = { ...settings };
       resolve();
     });
   });
@@ -223,7 +231,10 @@ async function getTabsMemoryInfo() {
   const tabs = await chrome.tabs.query({});
   const tabsInfo: TabInfo[] = [];
 
-  for (const tab of tabs) {
+  for (let i = 0; i < tabs.length; i++) {
+    const tab = tabs[i];
+    if (!tab.id) continue;
+
     const memoryUsage = await getTabMemoryUsage(tab);
 
     // Handle high memory tabs
@@ -231,7 +242,7 @@ async function getTabsMemoryInfo() {
 
     // Create tab info with history
     const tabInfo = updateTabMemoryHistory({
-      id: tab.id || 0,
+      id: tab.id,
       title: tab.title || 'Untitled',
       url: tab.url || '',
       favIconUrl: tab.favIconUrl,
@@ -242,10 +253,12 @@ async function getTabsMemoryInfo() {
       },
       history: [],
       isHighMemory: false,
-    }, memoryUsage, currentSettings.historyLength || 50); // Add default value of 50
+    }, memoryUsage, currentSettings.historyLength || 50);
+
+    tabsInfo.push(tabInfo);
 
     // Send memory update to content script if overlay is enabled
-    if (tab.id && !tab.url?.startsWith('chrome://') && currentSettings.showOverlay) {
+    if (!tab.url?.startsWith('chrome://') && currentSettings.showOverlay) {
       try {
         await chrome.tabs.sendMessage(tab.id, {
           type: 'UPDATE_MEMORY',
@@ -253,11 +266,9 @@ async function getTabsMemoryInfo() {
           settings: currentSettings
         });
       } catch (error) {
-        await updateContentScriptForTab(tab.id);
+        // Ignore errors for restricted tabs or if content script is not loaded
       }
     }
-
-    tabsInfo.push(tabInfo);
   }
 
   return tabsInfo;

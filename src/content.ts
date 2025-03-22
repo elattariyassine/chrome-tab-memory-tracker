@@ -7,22 +7,24 @@ function createOverlay() {
 
   overlay = document.createElement('div');
   overlay.style.position = 'fixed';
-  overlay.style.top = '0';
-  overlay.style.right = '0';
+  overlay.style.top = '0px';
+  overlay.style.right = '0px';
   overlay.style.padding = '4px 8px';
   overlay.style.fontSize = '12px';
   overlay.style.fontFamily = 'monospace';
   overlay.style.zIndex = '9999999';
-  overlay.style.borderRadius = '0 0 0 4px';
+  overlay.style.borderRadius = '0px 0px 0px 4px';
   overlay.style.opacity = '0.9';
   overlay.style.transition = 'opacity 0.2s ease-in-out';
 
   // Add hover effect
-  overlay.addEventListener('mouseenter', () => {
-    if (overlay) overlay.style.opacity = '0.5';
+  overlay.addEventListener('mouseenter', (event: MouseEvent) => {
+    const target = event.currentTarget as HTMLDivElement;
+    target.style.opacity = '0.5';
   });
-  overlay.addEventListener('mouseleave', () => {
-    if (overlay) overlay.style.opacity = '0.9';
+  overlay.addEventListener('mouseleave', (event: MouseEvent) => {
+    const target = event.currentTarget as HTMLDivElement;
+    target.style.opacity = '0.9';
   });
 
   document.body.appendChild(overlay);
@@ -62,7 +64,7 @@ function getContrastColor(hexColor: string): string {
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   
   // Return black or white based on luminance
-  return luminance > 0.5 ? '#000000' : '#ffffff';
+  return luminance > 0.5 ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
 }
 
 // Listen for memory updates from background script

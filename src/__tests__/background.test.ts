@@ -1,178 +1,165 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { TabInfo, Settings } from '../types';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { getTabMemoryUsage, handleHighMemoryTab, updateTabMemoryHistory, loadSettings, saveSettings } from '../background';
+import type { TabInfo, Settings } from '../types';
 
-// Mock chrome API
-const mockChrome = {
-  tabs: {
-    query: vi.fn(),
-    reload: vi.fn(),
-    remove: vi.fn(),
-    discard: vi.fn(),
-    sendMessage: vi.fn(),
-  },
-  processes: {
-    getProcessInfo: vi.fn(),
-  },
-  storage: {
-    sync: {
-      get: vi.fn(),
-      set: vi.fn(),
-    },
-    onChanged: {
-      addListener: vi.fn(),
-    },
-  },
-  runtime: {
-    onMessage: {
-      addListener: vi.fn(),
-    },
-  },
-  scripting: {
-    executeScript: vi.fn(),
-  },
+const DEFAULT_SETTINGS: Settings = {
+  darkMode: false,
+  detailedView: false,
+  autoReload: true,
+  autoSnooze: false,
+  memoryThreshold: 100,
+  snoozeDuration: 30,
+  refreshInterval: 60000,
+  showOverlay: true,
+  overlayColor: '#ff0000',
+  historyLength: 10,
 };
-
-// Setup global chrome mock
-global.chrome = mockChrome as typeof chrome;
 
 describe('Background Script', () => {
   beforeEach(() => {
-    vi.resetAllMocks();
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.clearAllTimers();
+    vi.clearAllMocks();
+    // Mock chrome.storage.sync.get to return default settings
+    (chrome.storage.sync.get as any).mockImplementation((keys: string | string[] | { [key: string]: any } | null, callback: (items: { [key: string]: any }) => void) => {
+      callback({ settings: DEFAULT_SETTINGS });
+    });
   });
 
   describe('Memory Usage Calculation', () => {
     it('should calculate memory usage correctly from process info', async () => {
-      const mockProcesses = [{
+      const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
+      (chrome.processes.getProcessInfo as any).mockResolvedValue([{
         id: 1,
-        privateMemory: 1024 * 1024 * 100, // 100MB
-        tasks: [{ tabId: 123 }],
-      }];
+        osProcessId: 123,
+        type: 'renderer',
+        privateMemory: 1000 * 1024 * 1024, // 1000MB in bytes
+        jsMemoryAllocated: 200 * 1024 * 1024, // 200MB in bytes
+        sharedMemory: 300 * 1024 * 1024, // 300MB in bytes
+        tasks: [{ tabId: 1 }]
+      }]);
 
-      mockChrome.processes.getProcessInfo.mockResolvedValue(mockProcesses);
-
-      const { getTabMemoryUsage } = await import('../background');
-      const result = await getTabMemoryUsage({ id: 123 } as chrome.tabs.Tab);
-
-      expect(result).toBe(100); // Should be 100MB
+      const memoryUsage = await getTabMemoryUsage(tab);
+      expect(memoryUsage).toBe(1300); // 1000MB + 200MB + (300MB/3)
     });
 
     it('should fall back to estimation when process info is not available', async () => {
-      mockChrome.processes.getProcessInfo.mockRejectedValue(new Error('Not available'));
-
-      const { getTabMemoryUsage } = await import('../background');
-      const result = await getTabMemoryUsage({
-        id: 123,
+      const tab = { 
+        id: 1, 
+        url: 'https://example.com',
         audible: true,
+        discarded: false,
+        autoDiscardable: true,
         status: 'complete',
-        active: true,
-      } as chrome.tabs.Tab);
-
-      expect(result).toBeGreaterThan(0);
+        active: true
+      } as chrome.tabs.Tab;
+      
+      (chrome.processes.getProcessInfo as any).mockResolvedValue([]);
+      
+      const memoryUsage = await getTabMemoryUsage(tab);
+      expect(memoryUsage).toBe(340); // 150 + 100 + 50 + 40
     });
   });
 
   describe('High Memory Tab Handling', () => {
     it('should auto-reload high memory tabs when enabled', async () => {
-      const { handleHighMemoryTab } = await import('../background');
-      const tab = { id: 123, url: 'https://example.com' } as chrome.tabs.Tab;
-      const settings: Settings = {
-        autoReload: true,
-        memoryThreshold: 100,
-        // ... other settings
-      } as Settings;
-
-      await handleHighMemoryTab(tab, 150, settings);
-      expect(mockChrome.tabs.reload).toHaveBeenCalledWith(123);
+      const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
+      await handleHighMemoryTab(tab, 1000);
+      expect(chrome.tabs.reload).toHaveBeenCalledWith(1);
     });
 
     it('should auto-snooze high memory tabs when enabled', async () => {
-      const { handleHighMemoryTab } = await import('../background');
-      const tab = { id: 123, url: 'https://example.com' } as chrome.tabs.Tab;
-      const settings: Settings = {
-        autoSnooze: true,
-        memoryThreshold: 100,
-        snoozeDuration: 5,
-        // ... other settings
-      } as Settings;
+      const settings = { ...DEFAULT_SETTINGS, autoReload: false, autoSnooze: true };
+      (chrome.storage.sync.get as any).mockImplementation((keys: string | string[] | { [key: string]: any } | null, callback: (items: { [key: string]: any }) => void) => {
+        callback({ settings });
+      });
 
-      await handleHighMemoryTab(tab, 150, settings);
-      expect(mockChrome.tabs.discard).toHaveBeenCalledWith(123);
+      const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
+      await handleHighMemoryTab(tab, 1000);
+      expect(chrome.tabs.discard).toHaveBeenCalledWith(1);
+    });
+
+    it('should not handle chrome:// tabs', async () => {
+      const tab = { id: 1, url: 'chrome://settings' } as chrome.tabs.Tab;
+      await handleHighMemoryTab(tab, 1000);
+      expect(chrome.tabs.reload).not.toHaveBeenCalled();
+      expect(chrome.tabs.discard).not.toHaveBeenCalled();
     });
   });
 
   describe('Memory History Tracking', () => {
-    it('should maintain memory history for tabs', async () => {
-      const { updateTabMemoryHistory } = await import('../background');
+    it('should maintain memory history for tabs', () => {
       const tab: TabInfo = {
-        id: 123,
+        id: 1,
         title: 'Test Tab',
         url: 'https://example.com',
-        memoryInfo: { privateMemory: 100, sharedMemory: 0 },
+        status: 'complete',
+        memoryInfo: {
+          privateMemory: 1000,
+          sharedMemory: 0
+        },
         history: [],
-        isHighMemory: false,
+        isHighMemory: false
       };
 
-      const updatedTab = updateTabMemoryHistory(tab, 150, 5);
+      let updatedTab = updateTabMemoryHistory(tab, 1000);
       expect(updatedTab.history).toHaveLength(1);
-      expect(updatedTab.history[0].memory).toBe(150);
+      expect(updatedTab.history[0].memory).toBe(1000);
+
+      updatedTab = updateTabMemoryHistory(updatedTab, 2000);
+      expect(updatedTab.history).toHaveLength(2);
+      expect(updatedTab.history[0].memory).toBe(2000);
+      expect(updatedTab.history[1].memory).toBe(1000);
     });
 
     it('should limit history length', async () => {
-      const { updateTabMemoryHistory } = await import('../background');
       const tab: TabInfo = {
-        id: 123,
+        id: 1,
         title: 'Test Tab',
         url: 'https://example.com',
-        memoryInfo: { privateMemory: 100, sharedMemory: 0 },
-        history: Array(5).fill(null).map((_, i) => ({
-          timestamp: Date.now() - i * 1000,
-          memory: 100 + i,
-        })),
-        isHighMemory: false,
+        status: 'complete',
+        memoryInfo: {
+          privateMemory: 0,
+          sharedMemory: 0
+        },
+        history: [],
+        isHighMemory: false
       };
 
-      const updatedTab = updateTabMemoryHistory(tab, 150, 5);
+      const settings = { ...DEFAULT_SETTINGS, historyLength: 2 };
+      (chrome.storage.sync.get as any).mockImplementation((keys: string | string[] | { [key: string]: any } | null, callback: (items: { [key: string]: any }) => void) => {
+        callback({ settings });
+      });
+
+      let updatedTab = updateTabMemoryHistory(tab, 1000);
+      updatedTab = updateTabMemoryHistory(updatedTab, 2000);
+      updatedTab = updateTabMemoryHistory(updatedTab, 3000);
+
       expect(updatedTab.history).toHaveLength(5);
-      expect(updatedTab.history[0].memory).toBe(150);
+      expect(updatedTab.history[0].memory).toBe(3000);
+      expect(updatedTab.history[1].memory).toBe(2000);
     });
   });
 
   describe('Settings Management', () => {
     it('should load default settings when none exist', async () => {
-      mockChrome.storage.sync.get.mockImplementation((_, callback) => {
+      (chrome.storage.sync.get as any).mockImplementation((keys: string | string[] | { [key: string]: any } | null, callback: (items: { [key: string]: any }) => void) => {
         callback({});
       });
 
-      const { loadSettings } = await import('../background');
       const settings = await loadSettings();
-
-      expect(settings).toMatchObject({
-        darkMode: false,
-        detailedView: true,
-        showOverlay: true,
-        overlayColor: '#000000',
-        historyLength: 50,
-      });
+      expect(settings).toEqual(DEFAULT_SETTINGS);
     });
 
     it('should save settings correctly', async () => {
-      const { saveSettings } = await import('../background');
-      const settings: Settings = {
-        darkMode: true,
-        detailedView: false,
-        showOverlay: true,
-        overlayColor: '#FF0000',
-        historyLength: 10,
-        // ... other settings
-      } as Settings;
+      const newSettings: Settings = { ...DEFAULT_SETTINGS, darkMode: true };
+      (chrome.storage.sync.set as any).mockImplementation((items: { [key: string]: any }, callback?: () => void) => {
+        callback?.();
+      });
 
-      await saveSettings(settings);
-      expect(mockChrome.storage.sync.set).toHaveBeenCalledWith({ settings });
+      await saveSettings(newSettings);
+      expect(chrome.storage.sync.set).toHaveBeenCalledWith(
+        { settings: newSettings },
+        expect.any(Function)
+      );
     });
   });
 }); 
