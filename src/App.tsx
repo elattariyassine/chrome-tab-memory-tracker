@@ -1,35 +1,37 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useEffect, useState } from 'react';
+import Popup from './components/Popup';
 
-function App() {
-  const [count, setCount] = useState(0)
+const App: React.FC = () => {
+  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    // Load dark mode preference from storage
+    chrome.storage.sync.get(['settings'], (result) => {
+      if (result.settings?.darkMode) {
+        setDarkMode(result.settings.darkMode);
+        document.documentElement.classList.toggle('dark', result.settings.darkMode);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    // Listen for settings changes
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+      if (changes.settings?.newValue?.darkMode !== undefined) {
+        setDarkMode(changes.settings.newValue.darkMode);
+        document.documentElement.classList.toggle('dark', changes.settings.newValue.darkMode);
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChange);
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange);
+  }, []);
 
   return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <div className="w-[400px] h-[600px]">
+      <Popup />
+    </div>
+  );
+};
 
-export default App
+export default App;

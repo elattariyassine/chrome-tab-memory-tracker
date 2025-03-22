@@ -1,66 +1,99 @@
-# React Chrome Extension Template
+# Tab RAM Tracker Chrome Extension
 
-This is a template for creating a Chrome extension using React and [Vite](https://vitejs.dev/) with TypeScript.
+A developer-focused Chrome extension that provides real-time memory usage monitoring for browser tabs. This extension helps developers diagnose browser performance issues by tracking RAM consumption and suggesting optimizations.
 
+## Features
 
-## Getting Started
+- 🔍 Real-time RAM usage monitoring for each tab
+- 📊 Total memory usage indicator
+- ⚠️ High-memory tab highlighting
+- 🔄 Quick tab reload/close actions
+- 🌙 Dark mode support
+- ⚙️ Customizable settings
+- 📈 Memory usage history
+- 🔔 Smart notifications
 
-### Prerequisites
+## Installation
 
-Make sure you have [Node.js](https://nodejs.org/) (version 18+ or 20+) installed on your machine.
-
-### Setup
-
-1. Clone or fork the repository :
-
-    ```sh
-    # To clone
-    git clone https://github.com/5tigerjelly/chrome-extension-react-template
-    cd chrome-extension-react-template
-    ```
-
-2. Install the dependencies:
-
-    ```sh
-    npm install
-    ```
-
-## 🏗️ Development
-
-To start the development server:
-
-```sh
-npm run dev
+1. Clone this repository:
+```bash
+git clone https://github.com/yourusername/tab-ram-tracker.git
+cd tab-ram-tracker
 ```
 
-This will start the Vite development server and open your default browser.
+2. Install dependencies:
+```bash
+npm install
+```
 
-## 📦 Build 
-
-To create a production build:
-
-```sh
+3. Build the extension:
+```bash
 npm run build
 ```
 
-This will generate the build files in the `build` directory.
+4. Load the extension in Chrome:
+   - Open Chrome and go to `chrome://extensions/`
+   - Enable "Developer mode" in the top right
+   - Click "Load unpacked" and select the `dist` directory from this project
 
-## 📂 Load Extension in Chrome
+## Development
 
-1. Open Chrome and navigate to `chrome://extensions/`.
-2. Enable "Developer mode" using the toggle switch in the top right corner.
-3. Click "Load unpacked" and select the `build` directory.
+1. Start the development server:
+```bash
+npm run dev
+```
 
-Your React app should now be loaded as a Chrome extension!
+2. Watch for changes during development:
+```bash
+npm run watch
+```
 
-## 🗂️ Project Structure
+3. Build for production:
+```bash
+npm run build
+```
 
-- `public/`: Contains static files and the `manifest.json`.
-- `src/`: Contains the React app source code.
-- `vite.config.ts`: Vite configuration file.
-- `tsconfig.json`: TypeScript configuration file.
-- `package.json`: Contains the project dependencies and scripts.
+## Usage
+
+1. Click the extension icon in your Chrome toolbar to open the popup
+2. View real-time memory usage for all open tabs
+3. Sort tabs by memory usage (highest to lowest)
+4. Identify high-memory tabs (highlighted in red)
+5. Take action:
+   - Reload high-memory tabs
+   - Close unnecessary tabs
+   - Monitor total memory usage
+
+## Settings
+
+- **Update Interval**: Configure how often the memory usage is updated (default: 5 seconds)
+- **High Memory Threshold**: Set the memory limit for highlighting tabs (default: 500MB)
+- **Total Memory Threshold**: Set the system memory usage alert threshold (default: 75%)
+- **Auto Snooze**: Enable automatic suspension of inactive high-memory tabs
+- **Auto Reload**: Enable automatic reloading of high-memory tabs
+
+## Privacy
+
+This extension:
+- Only requests necessary permissions
+- Processes all data locally
+- Does not collect or transmit any information
+- Respects your privacy
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Built with React and TypeScript
+- Uses Chrome Extension APIs
+- Inspired by developer needs for better browser performance monitoring

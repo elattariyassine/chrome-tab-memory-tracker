@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="#4CAF50" opacity="0.1"/>
+  
+  <!-- Memory bars -->
+  <rect x="32" y="64" width="8" height="32" fill="#4CAF50" rx="2"/>
+  <rect x="48" y="64" width="8" height="48" fill="#4CAF50" rx="2"/>
+  <rect x="64" y="64" width="8" height="56" fill="#4CAF50" rx="2"/>
+  <rect x="80" y="64" width="8" height="40" fill="#4CAF50" rx="2"/>
+  <rect x="96" y="64" width="8" height="24" fill="#4CAF50" rx="2"/>
+  
+  <!-- CPU circle -->
+  <circle cx="64" cy="32" r="16" fill="#4CAF50" opacity="0.2"/>
+  <circle cx="64" cy="32" r="12" fill="#4CAF50" opacity="0.4"/>
+  <circle cx="64" cy="32" r="8" fill="#4CAF50"/>
+</svg> 
