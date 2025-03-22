@@ -16,6 +16,42 @@ const DEFAULT_SETTINGS: Settings = {
 let currentSettings: Settings = DEFAULT_SETTINGS;
 const snoozeTimeouts: { [tabId: number]: number } = {};
 
+// Function to get accurate memory usage for a tab
+async function getTabMemoryUsage(tab: chrome.tabs.Tab): Promise<number> {
+  try {
+    // Get process info for the tab
+    const processes = await chrome.processes.getProcessInfo(["memory"]);
+    const tabProcess = processes.find(process => {
+      return process.tasks?.some(task => task.tabId === tab.id);
+    });
+
+    if (tabProcess) {
+      // Convert bytes to MB
+      const privateMemory = Math.round(tabProcess.privateMemory! / (1024 * 1024));
+      const jsMemory = Math.round((tabProcess.jsMemoryAllocated || 0) / (1024 * 1024));
+      const sharedMemory = Math.round((tabProcess.sharedMemory || 0) / (1024 * 1024));
+
+      // Calculate total memory usage
+      let totalMemory = privateMemory;
+
+      // Add JS memory if available and not included in private memory
+      if (jsMemory > 0) {
+        totalMemory += jsMemory;
+      }
+
+      // Add a portion of shared memory (we'll count 1/3 of shared memory)
+      totalMemory += Math.round(sharedMemory / 3);
+
+      return totalMemory;
+    }
+  } catch (error) {
+    console.log('Falling back to estimation for tab:', tab.id);
+  }
+
+  // Fallback to estimation if process info is not available
+  return estimateTabMemory(tab);
+}
+
 // Function to handle high memory tabs
 async function handleHighMemoryTab(tab: chrome.tabs.Tab, memoryUsage: number) {
   if (!tab.id || tab.url?.startsWith('chrome://')) return;
@@ -130,18 +166,22 @@ chrome.tabs.onCreated.addListener((tab) => {
   }
 });
 
-// Function to estimate memory usage for a tab
+// Fallback memory estimation function
 function estimateTabMemory(tab: chrome.tabs.Tab): number {
-  let memory = 100; // Base memory usage
+  let memory = 150; // Base memory usage (increased from 100)
 
   // Add memory based on tab properties
-  if (tab.audible) memory += 50;
-  if (tab.discarded) memory += 20;
-  if (!tab.autoDiscardable) memory += 30;
+  if (tab.audible) memory += 100; // Increased from 50
+  if (tab.discarded) memory += 30; // Increased from 20
+  if (!tab.autoDiscardable) memory += 50; // Increased from 30
 
   // Add memory based on URL type
-  if (tab.url?.startsWith('chrome://')) memory += 40;
-  if (tab.url?.startsWith('chrome-extension://')) memory += 30;
+  if (tab.url?.startsWith('chrome://')) memory += 80; // Increased from 40
+  if (tab.url?.startsWith('chrome-extension://')) memory += 60; // Increased from 30
+
+  // Add memory based on tab status
+  if (tab.status === 'complete') memory += 50;
+  if (tab.active) memory += 40;
 
   return memory;
 }
@@ -152,7 +192,7 @@ async function getTabsMemoryInfo() {
   const tabsInfo: TabInfo[] = [];
 
   for (const tab of tabs) {
-    const memoryUsage = estimateTabMemory(tab);
+    const memoryUsage = await getTabMemoryUsage(tab);
     
     // Handle high memory tabs
     await handleHighMemoryTab(tab, memoryUsage);

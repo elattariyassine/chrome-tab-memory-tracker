@@ -17,7 +17,8 @@
       "tabs",
       "storage",
       "system.memory",
-      "scripting"
+      "scripting",
+      "processes"
     ],
     "host_permissions": [
       "<all_urls>"

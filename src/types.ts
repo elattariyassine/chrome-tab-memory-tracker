@@ -32,4 +32,32 @@ declare global {
   interface Window {
     chrome: typeof chrome;
   }
+}
+
+// Chrome Processes API types
+declare global {
+  namespace chrome {
+    namespace processes {
+      interface ProcessInfo {
+        id: number;
+        osProcessId: number;
+        type: string;
+        profile: string;
+        naclDebugPort?: number;
+        title: string;
+        privateMemory?: number;
+        jsMemoryAllocated?: number;
+        sharedMemory?: number;
+        tasks?: {
+          osProcessId: number;
+          title: string;
+          tabId?: number;
+        }[];
+      }
+
+      function getProcessInfo(
+        flags: string[],
+      ): Promise<ProcessInfo[]>;
+    }
+  }
 } 
