@@ -23,6 +23,8 @@ export interface Settings {
   memoryThreshold: number; // in MB
   snoozeDuration: number; // in minutes
   refreshInterval: number; // in milliseconds
+  showOverlay: boolean; // whether to show memory overlay on tabs
+  overlayPosition: 'corner' | 'title'; // where to display the overlay
 }
 
 // Chrome API types

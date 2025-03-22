@@ -15,9 +15,9 @@
     },
     "permissions": [
       "tabs",
+      "storage",
       "system.memory",
-      "notifications",
-      "storage"
+      "scripting"
     ],
     "host_permissions": [
       "<all_urls>"

@@ -13,6 +13,8 @@ const Popup: React.FC = () => {
     memoryThreshold: 500,
     snoozeDuration: 30,
     refreshInterval: 5000,
+    showOverlay: true,
+    overlayPosition: 'corner',
   });
   const [activeTab, setActiveTab] = useState<'tabs' | 'settings'>('tabs');
   const [sortBy, setSortBy] = useState<'memory' | 'title'>('memory');
@@ -34,6 +36,8 @@ const Popup: React.FC = () => {
           memoryThreshold: 500,
           snoozeDuration: 30,
           refreshInterval: 5000,
+          showOverlay: true,
+          overlayPosition: 'corner' as const,
         };
         chrome.storage.sync.set({ settings: defaultSettings });
         setSettings(defaultSettings);
@@ -115,7 +119,7 @@ const Popup: React.FC = () => {
   const totalMemoryPercentage = systemMemory ? (totalMemory / systemMemory.capacity) * 100 : 0;
 
   return (
-    <div className="w-[400px] min-h-[300px] max-h-[600px] flex flex-col bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+    <div className="w-[400px] h-[600px] flex flex-col bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-2">
@@ -178,14 +182,16 @@ const Popup: React.FC = () => {
             Settings
           </button>
         </div>
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as 'memory' | 'title')}
-          className="px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-        >
-          <option value="memory">Sort by Memory</option>
-          <option value="title">Sort by Title</option>
-        </select>
+        {activeTab === 'tabs' && (
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'memory' | 'title')}
+            className="px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+          >
+            <option value="memory">Sort by Memory</option>
+            <option value="title">Sort by Title</option>
+          </select>
+        )}
       </div>
 
       {/* Content */}
@@ -204,11 +210,17 @@ const Popup: React.FC = () => {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center space-x-2 min-w-0 flex-1">
-                      <img
-                        src={tab.favIconUrl || 'default-favicon.png'}
-                        alt=""
-                        className="w-4 h-4 flex-shrink-0"
-                      />
+                      {tab.favIconUrl && (
+                        <img
+                          src={tab.favIconUrl}
+                          alt=""
+                          className="w-4 h-4 flex-shrink-0"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                      )}
                       <span className="font-medium truncate">{tab.title}</span>
                     </div>
                     <div className="flex items-center space-x-2 flex-shrink-0">
@@ -319,6 +331,53 @@ const Popup: React.FC = () => {
                   Automatically suspend tabs that exceed the memory threshold
                 </p>
               </label>
+            </div>
+
+            {/* Overlay Settings */}
+            <div className="space-y-4">
+              <div className="flex items-start space-x-2">
+                <input
+                  type="checkbox"
+                  checked={settings.showOverlay}
+                  onChange={(e) => handleSettingsChange({ showOverlay: e.target.checked })}
+                  className="mt-1 w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 focus:ring-offset-white bg-white"
+                />
+                <label className="flex-1">
+                  <span className="text-sm font-medium block">Show Memory Overlay</span>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Display memory usage overlay on each tab
+                  </p>
+                </label>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">Overlay Position</label>
+                <div className="flex items-center space-x-4">
+                  <label className={`flex items-center space-x-2 ${!settings.showOverlay ? 'opacity-50' : ''}`}>
+                    <input
+                      type="radio"
+                      checked={settings.overlayPosition === 'corner'}
+                      onChange={() => handleSettingsChange({ overlayPosition: 'corner' })}
+                      disabled={!settings.showOverlay}
+                      className="w-4 h-4 text-blue-500 focus:ring-blue-500 focus:ring-offset-white bg-white"
+                    />
+                    <span className="text-sm">Corner</span>
+                  </label>
+                  <label className={`flex items-center space-x-2 ${!settings.showOverlay ? 'opacity-50' : ''}`}>
+                    <input
+                      type="radio"
+                      checked={settings.overlayPosition === 'title'}
+                      onChange={() => handleSettingsChange({ overlayPosition: 'title' })}
+                      disabled={!settings.showOverlay}
+                      className="w-4 h-4 text-blue-500 focus:ring-blue-500 focus:ring-offset-white bg-white"
+                    />
+                    <span className="text-sm">Tab Title</span>
+                  </label>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Choose where to display the memory usage overlay
+                </p>
+              </div>
             </div>
           </div>
         )}

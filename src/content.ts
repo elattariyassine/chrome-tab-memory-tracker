@@ -1,63 +1,80 @@
-// Create and inject the overlay element
-const createOverlay = () => {
+import { Settings } from './types';
+
+let memoryOverlay: HTMLElement | null = null;
+let currentSettings: Settings | null = null;
+
+function createCornerOverlay() {
   const overlay = document.createElement('div');
-  overlay.id = 'tab-ram-overlay';
-  overlay.style.cssText = `
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    background: rgba(0, 0, 0, 0.85);
-    color: white;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 13px;
-    z-index: 999999;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    pointer-events: none;
-    transition: all 0.3s;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  `;
-  document.body.appendChild(overlay);
-  return overlay;
-};
-
-// Update the overlay with memory usage
-const updateOverlay = (memory: number) => {
-  let overlay = document.getElementById('tab-ram-overlay');
-  if (!overlay) {
-    overlay = createOverlay();
-  }
-
-  const memoryText = memory >= 1024 
-    ? `${(memory / 1024).toFixed(1)} GB`
-    : `${memory.toFixed(0)} MB`;
-
-  // Color code based on memory usage
-  let color;
-  if (memory >= 1024) { // More than 1GB
-    color = '#ef4444'; // Red
-  } else if (memory >= 500) { // More than 500MB
-    color = '#f59e0b'; // Yellow
-  } else {
-    color = '#22c55e'; // Green
-  }
-
-  overlay.style.backgroundColor = `${color}dd`; // Semi-transparent
+  overlay.style.position = 'fixed';
+  overlay.style.top = '8px';
+  overlay.style.right = '8px';
+  overlay.style.padding = '4px 8px';
+  overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
   overlay.style.color = 'white';
-  overlay.textContent = `RAM: ${memoryText}`;
-};
+  overlay.style.borderRadius = '4px';
+  overlay.style.fontSize = '12px';
+  overlay.style.zIndex = '9999999';
+  overlay.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+  overlay.style.pointerEvents = 'none';
+  return overlay;
+}
 
-// Listen for messages from the background script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'UPDATE_TAB_MEMORY') {
-    updateOverlay(message.memory);
+function createTitleOverlay() {
+  const overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.top = '0';
+  overlay.style.right = '40px'; // Space for the close button
+  overlay.style.padding = '2px 6px';
+  overlay.style.margin = '8px';
+  overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+  overlay.style.color = 'white';
+  overlay.style.borderRadius = '4px';
+  overlay.style.fontSize = '11px';
+  overlay.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+  overlay.style.lineHeight = '16px';
+  overlay.style.zIndex = '9999999';
+  overlay.style.pointerEvents = 'none';
+  return overlay;
+}
+
+function updateOverlay(memoryUsage: number, settings: Settings) {
+  if (!settings.showOverlay) {
+    if (memoryOverlay) {
+      memoryOverlay.remove();
+      memoryOverlay = null;
+    }
+    return;
   }
+
+  const memoryText = `${Math.round(memoryUsage)} MB`;
+
+  if (settings.overlayPosition === 'corner') {
+    if (!memoryOverlay || memoryOverlay.style.top !== '8px') {
+      if (memoryOverlay) memoryOverlay.remove();
+      memoryOverlay = createCornerOverlay();
+      document.body.appendChild(memoryOverlay);
+    }
+    memoryOverlay.textContent = `RAM: ${memoryText}`;
+  } else {
+    // Title position
+    if (!memoryOverlay || memoryOverlay.style.top !== '0') {
+      if (memoryOverlay) memoryOverlay.remove();
+      memoryOverlay = createTitleOverlay();
+      document.body.appendChild(memoryOverlay);
+    }
+    memoryOverlay.textContent = memoryText;
+  }
+}
+
+// Listen for memory updates from background script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'UPDATE_MEMORY') {
+    currentSettings = message.settings;
+    updateOverlay(message.memoryUsage, message.settings);
+  }
+  sendResponse({});
+  return true;
 });
 
 // Request initial memory data
-chrome.runtime.sendMessage({ type: 'GET_TAB_MEMORY' }, (response) => {
-  if (response?.memory) {
-    updateOverlay(response.memory);
-  }
-}); 
+chrome.runtime.sendMessage({ type: 'GET_TAB_MEMORY' }); 
