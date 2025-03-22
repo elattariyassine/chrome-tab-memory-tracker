@@ -51,7 +51,7 @@ export function updateTabMemoryHistory(tab: TabInfo, memoryUsage: number, histor
 export async function getTabMemoryUsage(tab: chrome.tabs.Tab): Promise<number> {
   try {
     // Get process info for the tab
-    const processes = await (chrome as any).processes.getProcessInfo(["memory"]) as ChromeProcess[];
+    const processes = await (chrome.processes as { getProcessInfo: (args: string[]) => Promise<ChromeProcess[]> }).getProcessInfo(["memory"]);
     const tabProcess = processes.find((process: ChromeProcess) => {
       return process.tasks?.some(task => task.tabId === tab.id);
     });

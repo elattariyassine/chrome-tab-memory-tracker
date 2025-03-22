@@ -19,7 +19,10 @@ describe('Background Script', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Mock chrome.storage.sync.get to return default settings
-    (chrome.storage.sync.get as any).mockImplementation((keys: string | string[] | { [key: string]: any } | null, callback: (items: { [key: string]: any }) => void) => {
+    vi.spyOn(chrome.storage.sync, 'get').mockImplementation((
+        _keys: string | string[] | { [key: string]: unknown } | null,
+      callback: (items: { [key: string]: unknown }) => void
+    ) => {
       callback({ settings: DEFAULT_SETTINGS });
     });
   });
@@ -27,23 +30,25 @@ describe('Background Script', () => {
   describe('Memory Usage Calculation', () => {
     it('should calculate memory usage correctly from process info', async () => {
       const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
-      (chrome.processes.getProcessInfo as any).mockResolvedValue([{
-        id: 1,
-        osProcessId: 123,
-        type: 'renderer',
-        privateMemory: 1000 * 1024 * 1024, // 1000MB in bytes
-        jsMemoryAllocated: 200 * 1024 * 1024, // 200MB in bytes
-        sharedMemory: 300 * 1024 * 1024, // 300MB in bytes
-        tasks: [{ tabId: 1 }]
-      }]);
+      vi.spyOn(chrome.processes, 'getProcessInfo').mockResolvedValue([
+        {
+          id: 1,
+          osProcessId: 123,
+          type: 'renderer',
+          privateMemory: 1000 * 1024 * 1024, // 1000MB in bytes
+          jsMemoryAllocated: 200 * 1024 * 1024, // 200MB in bytes
+          sharedMemory: 300 * 1024 * 1024, // 300MB in bytes
+          tasks: [{ tabId: 1 }]
+        }
+      ]);
 
       const memoryUsage = await getTabMemoryUsage(tab);
       expect(memoryUsage).toBe(1300); // 1000MB + 200MB + (300MB/3)
     });
 
     it('should fall back to estimation when process info is not available', async () => {
-      const tab = { 
-        id: 1, 
+      const tab = {
+        id: 1,
         url: 'https://example.com',
         audible: true,
         discarded: false,
@@ -51,9 +56,9 @@ describe('Background Script', () => {
         status: 'complete',
         active: true
       } as chrome.tabs.Tab;
-      
-      (chrome.processes.getProcessInfo as any).mockResolvedValue([]);
-      
+
+      vi.spyOn(chrome.processes, 'getProcessInfo').mockResolvedValue([]);
+
       const memoryUsage = await getTabMemoryUsage(tab);
       expect(memoryUsage).toBe(340); // 150 + 100 + 50 + 40
     });
@@ -68,7 +73,10 @@ describe('Background Script', () => {
 
     it('should auto-snooze high memory tabs when enabled', async () => {
       const settings = { ...DEFAULT_SETTINGS, autoReload: false, autoSnooze: true };
-      (chrome.storage.sync.get as any).mockImplementation((keys: string | string[] | { [key: string]: any } | null, callback: (items: { [key: string]: any }) => void) => {
+      vi.spyOn(chrome.storage.sync, 'get').mockImplementation((
+        keys: string | string[] | { [key: string]: unknown } | null,
+        callback: (items: { [key: string]: unknown }) => void
+      ) => {
         callback({ settings });
       });
 
@@ -125,7 +133,10 @@ describe('Background Script', () => {
       };
 
       const settings = { ...DEFAULT_SETTINGS, historyLength: 2 };
-      (chrome.storage.sync.get as any).mockImplementation((keys: string | string[] | { [key: string]: any } | null, callback: (items: { [key: string]: any }) => void) => {
+      vi.spyOn(chrome.storage.sync, 'get').mockImplementation((
+        keys: string | string[] | { [key: string]: unknown } | null,
+        callback: (items: { [key: string]: unknown }) => void
+      ) => {
         callback({ settings });
       });
 
@@ -141,7 +152,10 @@ describe('Background Script', () => {
 
   describe('Settings Management', () => {
     it('should load default settings when none exist', async () => {
-      (chrome.storage.sync.get as any).mockImplementation((keys: string | string[] | { [key: string]: any } | null, callback: (items: { [key: string]: any }) => void) => {
+      vi.spyOn(chrome.storage.sync, 'get').mockImplementation((
+        keys: string | string[] | { [key: string]: unknown } | null,
+        callback: (items: { [key: string]: unknown }) => void
+      ) => {
         callback({});
       });
 
@@ -151,7 +165,10 @@ describe('Background Script', () => {
 
     it('should save settings correctly', async () => {
       const newSettings: Settings = { ...DEFAULT_SETTINGS, darkMode: true };
-      (chrome.storage.sync.set as any).mockImplementation((items: { [key: string]: any }, callback?: () => void) => {
+      vi.spyOn(chrome.storage.sync, 'set').mockImplementation((
+        items: { [key: string]: unknown },
+        callback?: () => void
+      ) => {
         callback?.();
       });
 

@@ -1,35 +1,37 @@
 import { vi } from 'vitest';
 
-declare global {
-  namespace chrome {
-    interface ProcessInfo {
-      id: number;
-      osProcessId: number;
-      type: string;
-      privateMemory: number;
-      jsMemoryAllocated: number;
-      sharedMemory: number;
-      tasks: { tabId: number }[];
-    }
+export interface Chrome {
+  processes: Processes;
+}
 
-    interface Processes {
-      getProcessInfo(): Promise<ProcessInfo[]>;
-    }
+export interface ProcessInfo {
+  id: number;
+  osProcessId: number;
+  type: string;
+  privateMemory: number;
+  jsMemoryAllocated: number;
+  sharedMemory: number;
+  tasks: { tabId: number }[];
+}
 
-    interface Chrome {
-      processes: Processes;
-    }
-  }
+export interface Processes {
+  getProcessInfo(): Promise<ProcessInfo[]>;
 }
 
 // Mock chrome API
 const mockChrome = {
   storage: {
     sync: {
-      get: vi.fn().mockImplementation((keys: string | string[] | { [key: string]: any } | null, callback: (items: { [key: string]: any }) => void) => {
+      get: vi.fn().mockImplementation((
+        keys: string | string[] | Record<string, unknown> | null,
+        callback: (items: Record<string, unknown>) => void
+      ) => {
         callback({ settings: {} });
       }),
-      set: vi.fn().mockImplementation((items: { [key: string]: any }, callback?: () => void) => {
+      set: vi.fn().mockImplementation((
+        items: Record<string, unknown>,
+        callback?: () => void
+      ) => {
         callback?.();
       })
     },
@@ -40,9 +42,8 @@ const mockChrome = {
   runtime: {
     sendMessage: vi.fn(),
     onMessage: {
-      addListener: vi.fn().mockImplementation((callback) => {
-        // Store the callback for testing
-        (mockChrome.runtime.onMessage.addListener as any).callback = callback;
+      addListener: vi.fn().mockImplementation((callback: (message: unknown) => void) => {
+        (mockChrome.runtime.onMessage.addListener as { callback: (message: unknown) => void }).callback = callback;
       })
     }
   },
@@ -71,12 +72,21 @@ const mockChrome = {
 };
 
 // Mock chrome global
-global.chrome = mockChrome as unknown as typeof chrome;
+global.chrome = mockChrome as unknown as Chrome;
 
 // Mock Chart.js
 declare global {
   interface Window {
-    Chart: any;
+    Chart: {
+      register: () => void;
+      CategoryScale: object;
+      LinearScale: object;
+      PointElement: object;
+      LineElement: object;
+      Title: object;
+      Tooltip: object;
+      Legend: object;
+    };
   }
 }
 
@@ -93,7 +103,7 @@ window.Chart = {
 
 // Mock ResizeObserver
 window.ResizeObserver = class ResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}; 
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+};

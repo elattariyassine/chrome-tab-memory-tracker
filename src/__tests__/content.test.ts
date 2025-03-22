@@ -1,19 +1,24 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import type { Settings } from '../types';
-
-// Import the content script directly
-import '../content';
 
 describe('Content Script', () => {
-  beforeEach(() => {
+  let messageListener: (message: { type: 'UPDATE_MEMORY'; memoryUsage: number; settings: { showOverlay: boolean; overlayColor: string } }) => void;
+
+  beforeEach(async () => {
     vi.clearAllMocks();
     document.body.innerHTML = '';
+    
+    // Mock chrome.runtime.onMessage.addListener before importing the content script
+    vi.spyOn(chrome.runtime.onMessage, 'addListener').mockImplementation((callback) => {
+      messageListener = callback as typeof messageListener;
+    });
+
+    // Import the content script after setting up the mock
+    await import('../content');
   });
 
   describe('Overlay Management', () => {
     it('should create overlay with correct styles', () => {
       // Simulate the message that triggers overlay creation
-      const messageListener = (chrome.runtime.onMessage.addListener as any).callback;
       messageListener({
         type: 'UPDATE_MEMORY',
         memoryUsage: 1000,
@@ -42,7 +47,6 @@ describe('Content Script', () => {
 
     it('should remove overlay when showOverlay is false', () => {
       // First create the overlay
-      const messageListener = (chrome.runtime.onMessage.addListener as any).callback;
       messageListener({
         type: 'UPDATE_MEMORY',
         memoryUsage: 1000,
@@ -68,7 +72,6 @@ describe('Content Script', () => {
 
     it('should update overlay text and colors on new messages', () => {
       // First message
-      const messageListener = (chrome.runtime.onMessage.addListener as any).callback;
       messageListener({
         type: 'UPDATE_MEMORY',
         memoryUsage: 1000,
@@ -94,4 +97,4 @@ describe('Content Script', () => {
       expect(overlay?.style.color).toBe('rgb(0, 0, 0)'); // Black text for light background
     });
   });
-}); 
+});
