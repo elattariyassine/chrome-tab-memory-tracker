@@ -100,7 +100,7 @@ const Popup: React.FC = () => {
       const response = await chrome.runtime.sendMessage({ type: 'GET_TABS' });
       if (response?.tabs) {
         setTabs(response.tabs);
-        setTotalMemory(response.tabs.reduce((sum, tab) => sum + tab.memoryInfo.privateMemory, 0));
+        setTotalMemory(response.tabs.reduce((sum: number, tab: TabInfo) => sum + tab.memoryInfo.privateMemory, 0));
       }
     } catch (error) {
       console.error('Error loading tabs:', error);

@@ -1,3 +1,5 @@
+import {ProcessInfo} from "./__tests__/setup.ts";
+
 export interface MemoryInfo {
   availableCapacity: number; // in MB
   capacity: number; // in MB
@@ -51,6 +53,8 @@ export interface Chrome {
 
 declare global {
   interface Window {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
     chrome: Chrome;
   }
 } 

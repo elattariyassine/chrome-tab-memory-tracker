@@ -74,7 +74,7 @@ describe('Background Script', () => {
     it('should auto-snooze high memory tabs when enabled', async () => {
       const settings = { ...DEFAULT_SETTINGS, autoReload: false, autoSnooze: true };
       vi.spyOn(chrome.storage.sync, 'get').mockImplementation((
-        keys: string | string[] | { [key: string]: unknown } | null,
+          _keys: string | string[] | { [key: string]: unknown } | null,
         callback: (items: { [key: string]: unknown }) => void
       ) => {
         callback({ settings });
@@ -134,7 +134,7 @@ describe('Background Script', () => {
 
       const settings = { ...DEFAULT_SETTINGS, historyLength: 2 };
       vi.spyOn(chrome.storage.sync, 'get').mockImplementation((
-        keys: string | string[] | { [key: string]: unknown } | null,
+          _keys: string | string[] | { [key: string]: unknown } | null,
         callback: (items: { [key: string]: unknown }) => void
       ) => {
         callback({ settings });
@@ -153,7 +153,7 @@ describe('Background Script', () => {
   describe('Settings Management', () => {
     it('should load default settings when none exist', async () => {
       vi.spyOn(chrome.storage.sync, 'get').mockImplementation((
-        keys: string | string[] | { [key: string]: unknown } | null,
+          _keys: string | string[] | { [key: string]: unknown } | null,
         callback: (items: { [key: string]: unknown }) => void
       ) => {
         callback({});
@@ -166,7 +166,7 @@ describe('Background Script', () => {
     it('should save settings correctly', async () => {
       const newSettings: Settings = { ...DEFAULT_SETTINGS, darkMode: true };
       vi.spyOn(chrome.storage.sync, 'set').mockImplementation((
-        items: { [key: string]: unknown },
+          _items: { [key: string]: unknown },
         callback?: () => void
       ) => {
         callback?.();
