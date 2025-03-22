@@ -1,99 +1,51 @@
-# Tab RAM Tracker Chrome Extension
+# Tab RAM Tracker - Chrome Extension
 
-A developer-focused Chrome extension that provides real-time memory usage monitoring for browser tabs. This extension helps developers diagnose browser performance issues by tracking RAM consumption and suggesting optimizations.
+A Chrome extension that helps you monitor and manage memory usage of your browser tabs.
 
 ## Features
 
-- 🔍 Real-time RAM usage monitoring for each tab
-- 📊 Total memory usage indicator
-- ⚠️ High-memory tab highlighting
-- 🔄 Quick tab reload/close actions
-- 🌙 Dark mode support
-- ⚙️ Customizable settings
-- 📈 Memory usage history
-- 🔔 Smart notifications
-
-## Installation
-
-1. Clone this repository:
-```bash
-git clone https://github.com/yourusername/tab-ram-tracker.git
-cd tab-ram-tracker
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Build the extension:
-```bash
-npm run build
-```
-
-4. Load the extension in Chrome:
-   - Open Chrome and go to `chrome://extensions/`
-   - Enable "Developer mode" in the top right
-   - Click "Load unpacked" and select the `dist` directory from this project
+- Track memory usage of individual tabs
+- Display memory usage in a user-friendly interface
+- Auto-reload high memory tabs (configurable)
+- Dark mode support
+- Detailed view with memory history charts
+- Memory usage overlay on tab icons
+- Configurable memory thresholds and refresh intervals
 
 ## Development
 
-1. Start the development server:
-```bash
-npm run dev
-```
+This project uses:
+- React + TypeScript + Vite
+- Chart.js for memory usage visualization
+- Chrome Extension Manifest V3
 
-2. Watch for changes during development:
-```bash
-npm run watch
-```
+### Setup
 
-3. Build for production:
-```bash
-npm run build
-```
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Build the extension: `npm run build`
+4. Load the extension in Chrome:
+   - Open Chrome and navigate to `chrome://extensions/`
+   - Enable "Developer mode"
+   - Click "Load unpacked" and select the `dist` directory
 
-## Usage
+### Development Commands
 
-1. Click the extension icon in your Chrome toolbar to open the popup
-2. View real-time memory usage for all open tabs
-3. Sort tabs by memory usage (highest to lowest)
-4. Identify high-memory tabs (highlighted in red)
-5. Take action:
-   - Reload high-memory tabs
-   - Close unnecessary tabs
-   - Monitor total memory usage
+- `npm run dev` - Start development server
+- `npm run build` - Build the extension
+- `npm run test` - Run tests
+- `npm run lint` - Run linter
 
-## Settings
+## Configuration
 
-- **Update Interval**: Configure how often the memory usage is updated (default: 5 seconds)
-- **High Memory Threshold**: Set the memory limit for highlighting tabs (default: 500MB)
-- **Total Memory Threshold**: Set the system memory usage alert threshold (default: 75%)
-- **Auto Snooze**: Enable automatic suspension of inactive high-memory tabs
-- **Auto Reload**: Enable automatic reloading of high-memory tabs
-
-## Privacy
-
-This extension:
-- Only requests necessary permissions
-- Processes all data locally
-- Does not collect or transmit any information
-- Respects your privacy
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Users can configure:
+- Memory threshold for high memory alerts
+- Auto-reload settings
+- Dark/Light mode
+- Refresh interval
+- History length for memory tracking
+- Overlay appearance
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Built with React and TypeScript
-- Uses Chrome Extension APIs
-- Inspired by developer needs for better browser performance monitoring
+MIT License

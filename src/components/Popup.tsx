@@ -33,7 +33,7 @@ const DEFAULT_SETTINGS: Settings = {
   refreshInterval: 5000,
   showOverlay: true,
   overlayColor: '#000000',
-  historyLength: 50,
+  historyLength: 8,
 };
 
 const Popup: React.FC = () => {
