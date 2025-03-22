@@ -33,7 +33,7 @@ const mockChrome = {
 };
 
 // Setup global chrome mock
-global.chrome = mockChrome as any;
+global.chrome = mockChrome as typeof chrome;
 
 describe('Background Script', () => {
   beforeEach(() => {
