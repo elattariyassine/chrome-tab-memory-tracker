@@ -3,6 +3,8 @@ module.exports = {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
+    "./public/**/*.html",
+    "./build/**/*.html",
   ],
   darkMode: 'class',
   theme: {
@@ -24,4 +26,13 @@ module.exports = {
     },
   },
   plugins: [],
+  purge: {
+    enabled: true,
+    content: [
+      "./index.html",
+      "./src/**/*.{js,ts,jsx,tsx}",
+      "./public/**/*.html",
+      "./build/**/*.html",
+    ],
+  },
 } 

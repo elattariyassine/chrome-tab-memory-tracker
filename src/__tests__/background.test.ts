@@ -30,6 +30,8 @@ describe('Background Script', () => {
   describe('Memory Usage Calculation', () => {
     it('should calculate memory usage correctly from process info', async () => {
       const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
       vi.spyOn(chrome.processes, 'getProcessInfo').mockResolvedValue([
         {
           id: 1,
@@ -57,6 +59,8 @@ describe('Background Script', () => {
         active: true
       } as chrome.tabs.Tab;
 
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
       vi.spyOn(chrome.processes, 'getProcessInfo').mockResolvedValue([]);
 
       const memoryUsage = await getTabMemoryUsage(tab);
