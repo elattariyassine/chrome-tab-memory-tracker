@@ -1,79 +1,75 @@
 import { Settings } from './types';
 
-let memoryOverlay: HTMLElement | null = null;
-let currentSettings: Settings | null = null;
+let overlay: HTMLDivElement | null = null;
 
-function createCornerOverlay() {
-  const overlay = document.createElement('div');
-  overlay.style.position = 'fixed';
-  overlay.style.top = '8px';
-  overlay.style.right = '8px';
-  overlay.style.padding = '4px 8px';
-  overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-  overlay.style.color = 'white';
-  overlay.style.borderRadius = '4px';
-  overlay.style.fontSize = '12px';
-  overlay.style.zIndex = '9999999';
-  overlay.style.fontFamily = 'system-ui, -apple-system, sans-serif';
-  overlay.style.pointerEvents = 'none';
-  return overlay;
-}
+function createOverlay() {
+  if (overlay) return;
 
-function createTitleOverlay() {
-  const overlay = document.createElement('div');
+  overlay = document.createElement('div');
   overlay.style.position = 'fixed';
   overlay.style.top = '0';
-  overlay.style.right = '40px'; // Space for the close button
-  overlay.style.padding = '2px 6px';
-  overlay.style.margin = '8px';
-  overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-  overlay.style.color = 'white';
-  overlay.style.borderRadius = '4px';
-  overlay.style.fontSize = '11px';
-  overlay.style.fontFamily = 'system-ui, -apple-system, sans-serif';
-  overlay.style.lineHeight = '16px';
+  overlay.style.right = '0';
+  overlay.style.padding = '4px 8px';
+  overlay.style.fontSize = '12px';
+  overlay.style.fontFamily = 'monospace';
   overlay.style.zIndex = '9999999';
-  overlay.style.pointerEvents = 'none';
-  return overlay;
+  overlay.style.borderRadius = '0 0 0 4px';
+  overlay.style.opacity = '0.9';
+  overlay.style.transition = 'opacity 0.2s ease-in-out';
+
+  // Add hover effect
+  overlay.addEventListener('mouseenter', () => {
+    if (overlay) overlay.style.opacity = '0.5';
+  });
+  overlay.addEventListener('mouseleave', () => {
+    if (overlay) overlay.style.opacity = '0.9';
+  });
+
+  document.body.appendChild(overlay);
 }
 
 function updateOverlay(memoryUsage: number, settings: Settings) {
   if (!settings.showOverlay) {
-    if (memoryOverlay) {
-      memoryOverlay.remove();
-      memoryOverlay = null;
+    if (overlay) {
+      overlay.remove();
+      overlay = null;
     }
     return;
   }
 
-  const memoryText = `${Math.round(memoryUsage)} MB`;
+  if (!overlay) {
+    createOverlay();
+  }
 
-  if (settings.overlayPosition === 'corner') {
-    if (!memoryOverlay || memoryOverlay.style.top !== '8px') {
-      if (memoryOverlay) memoryOverlay.remove();
-      memoryOverlay = createCornerOverlay();
-      document.body.appendChild(memoryOverlay);
-    }
-    memoryOverlay.textContent = `RAM: ${memoryText}`;
-  } else {
-    // Title position
-    if (!memoryOverlay || memoryOverlay.style.top !== '0') {
-      if (memoryOverlay) memoryOverlay.remove();
-      memoryOverlay = createTitleOverlay();
-      document.body.appendChild(memoryOverlay);
-    }
-    memoryOverlay.textContent = memoryText;
+  if (overlay) {
+    overlay.textContent = `${memoryUsage} MB`;
+    overlay.style.backgroundColor = settings.overlayColor;
+    overlay.style.color = getContrastColor(settings.overlayColor);
   }
 }
 
+// Helper function to determine text color based on background color
+function getContrastColor(hexColor: string): string {
+  // Remove # if present
+  const color = hexColor.replace('#', '');
+  
+  // Convert hex to RGB
+  const r = parseInt(color.substr(0, 2), 16);
+  const g = parseInt(color.substr(2, 2), 16);
+  const b = parseInt(color.substr(4, 2), 16);
+  
+  // Calculate luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+  // Return black or white based on luminance
+  return luminance > 0.5 ? '#000000' : '#ffffff';
+}
+
 // Listen for memory updates from background script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'UPDATE_MEMORY') {
-    currentSettings = message.settings;
     updateOverlay(message.memoryUsage, message.settings);
   }
-  sendResponse({});
-  return true;
 });
 
 // Request initial memory data

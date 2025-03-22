@@ -1,24 +1,50 @@
 import React, { useEffect, useState } from 'react';
 import { TabInfo, MemoryInfo, Settings } from '../types';
 import { formatMemory } from '../utils';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+const DEFAULT_SETTINGS: Settings = {
+  darkMode: false,
+  detailedView: true,
+  autoReload: false,
+  autoSnooze: false,
+  memoryThreshold: 500,
+  snoozeDuration: 30,
+  refreshInterval: 5000,
+  showOverlay: true,
+  overlayColor: '#000000',
+  historyLength: 50,
+};
 
 const Popup: React.FC = () => {
   const [tabs, setTabs] = useState<TabInfo[]>([]);
   const [systemMemory, setSystemMemory] = useState<MemoryInfo | null>(null);
-  const [settings, setSettings] = useState<Settings>({
-    darkMode: false,
-    detailedView: true,
-    autoReload: false,
-    autoSnooze: false,
-    memoryThreshold: 500,
-    snoozeDuration: 30,
-    refreshInterval: 5000,
-    showOverlay: true,
-    overlayPosition: 'corner',
-  });
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [activeTab, setActiveTab] = useState<'tabs' | 'settings'>('tabs');
   const [sortBy, setSortBy] = useState<'memory' | 'title'>('memory');
   const [isLoading, setIsLoading] = useState(true);
+  const [totalMemory, setTotalMemory] = useState<number>(0);
+  const [selectedTab, setSelectedTab] = useState<TabInfo | null>(null);
 
   useEffect(() => {
     // Load settings from storage
@@ -37,7 +63,8 @@ const Popup: React.FC = () => {
           snoozeDuration: 30,
           refreshInterval: 5000,
           showOverlay: true,
-          overlayPosition: 'corner' as const,
+          overlayColor: '#000000',
+          historyLength: 50,
         };
         chrome.storage.sync.set({ settings: defaultSettings });
         setSettings(defaultSettings);
@@ -73,6 +100,7 @@ const Popup: React.FC = () => {
       const response = await chrome.runtime.sendMessage({ type: 'GET_TABS' });
       if (response?.tabs) {
         setTabs(response.tabs);
+        setTotalMemory(response.tabs.reduce((sum, tab) => sum + tab.memoryInfo.privateMemory, 0));
       }
     } catch (error) {
       console.error('Error loading tabs:', error);
@@ -115,8 +143,65 @@ const Popup: React.FC = () => {
     return a.title.localeCompare(b.title);
   });
 
-  const totalMemory = tabs.reduce((sum, tab) => sum + tab.memoryInfo.privateMemory, 0);
   const totalMemoryPercentage = systemMemory ? (totalMemory / systemMemory.capacity) * 100 : 0;
+
+  const handleTabClick = (tab: TabInfo) => {
+    setSelectedTab(selectedTab?.id === tab.id ? null : tab);
+  };
+
+  const renderMemoryChart = (tab: TabInfo) => {
+    if (!tab.history || tab.history.length === 0) return null;
+
+    const data = {
+      labels: tab.history.map(h => new Date(h.timestamp).toLocaleTimeString()),
+      datasets: [
+        {
+          label: 'Memory Usage (MB)',
+          data: tab.history.map(h => h.memory),
+          borderColor: settings.darkMode ? '#4ade80' : '#16a34a',
+          backgroundColor: settings.darkMode ? '#4ade8080' : '#16a34a80',
+          tension: 0.4,
+        },
+      ],
+    };
+
+    const options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: settings.darkMode ? '#ffffff20' : '#00000020',
+          },
+          ticks: {
+            color: settings.darkMode ? '#ffffff80' : '#00000080',
+          },
+        },
+        x: {
+          grid: {
+            color: settings.darkMode ? '#ffffff20' : '#00000020',
+          },
+          ticks: {
+            color: settings.darkMode ? '#ffffff80' : '#00000080',
+            maxRotation: 45,
+            minRotation: 45,
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          display: false,
+        },
+      },
+    };
+
+    return (
+      <div className="h-48 mt-4">
+        <Line data={data} options={options} />
+      </div>
+    );
+  };
 
   return (
     <div className="w-[400px] h-[600px] flex flex-col bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
@@ -206,7 +291,10 @@ const Popup: React.FC = () => {
               {sortedTabs.map((tab) => (
                 <div
                   key={tab.id}
-                  className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className={`p-3 hover:bg-gray-50 dark:hover:bg-gray-700 ${
+                    tab.isHighMemory ? 'bg-red-50 dark:bg-red-900/20' : ''
+                  }`}
+                  onClick={() => handleTabClick(tab)}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center space-x-2 min-w-0 flex-1">
@@ -228,19 +316,26 @@ const Popup: React.FC = () => {
                         {formatMemory(tab.memoryInfo.privateMemory)}
                       </span>
                       <button
-                        onClick={() => handleReloadTab(tab.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReloadTab(tab.id);
+                        }}
                         className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600"
                       >
                         🔄
                       </button>
                       <button
-                        onClick={() => handleCloseTab(tab.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCloseTab(tab.id);
+                        }}
                         className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600"
                       >
                         ❌
                       </button>
                     </div>
                   </div>
+                  {selectedTab?.id === tab.id && renderMemoryChart(tab)}
                   {settings.detailedView && (
                     <div className="mt-2 text-sm text-gray-500 dark:text-gray-400 space-y-1">
                       <div className="flex items-center space-x-2">
@@ -351,33 +446,24 @@ const Popup: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="block text-sm font-medium">Overlay Position</label>
-                <div className="flex items-center space-x-4">
-                  <label className={`flex items-center space-x-2 ${!settings.showOverlay ? 'opacity-50' : ''}`}>
-                    <input
-                      type="radio"
-                      checked={settings.overlayPosition === 'corner'}
-                      onChange={() => handleSettingsChange({ overlayPosition: 'corner' })}
-                      disabled={!settings.showOverlay}
-                      className="w-4 h-4 text-blue-500 focus:ring-blue-500 focus:ring-offset-white bg-white"
-                    />
-                    <span className="text-sm">Corner</span>
-                  </label>
-                  <label className={`flex items-center space-x-2 ${!settings.showOverlay ? 'opacity-50' : ''}`}>
-                    <input
-                      type="radio"
-                      checked={settings.overlayPosition === 'title'}
-                      onChange={() => handleSettingsChange({ overlayPosition: 'title' })}
-                      disabled={!settings.showOverlay}
-                      className="w-4 h-4 text-blue-500 focus:ring-blue-500 focus:ring-offset-white bg-white"
-                    />
-                    <span className="text-sm">Tab Title</span>
-                  </label>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Choose where to display the memory usage overlay
-                </p>
+                <label className="block text-sm font-medium">Overlay Color</label>
+                <input
+                  type="color"
+                  value={settings.overlayColor}
+                  onChange={(e) => handleSettingsChange({ overlayColor: e.target.value })}
+                  className="w-full h-10 rounded border border-gray-300 dark:border-gray-600"
+                />
               </div>
+            </div>
+
+            <div>
+              <label className="block mb-2">History Length</label>
+              <input
+                type="number"
+                value={settings.historyLength}
+                onChange={(e) => handleSettingsChange({ historyLength: parseInt(e.target.value) })}
+                className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+              />
             </div>
           </div>
         )}

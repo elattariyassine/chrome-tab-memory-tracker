@@ -3,6 +3,11 @@ export interface MemoryInfo {
   capacity: number; // in MB
 }
 
+export interface TabMemoryHistory {
+  timestamp: number;
+  memory: number;
+}
+
 export interface TabInfo {
   id: number;
   title: string;
@@ -13,6 +18,8 @@ export interface TabInfo {
     privateMemory: number; // in MB
     sharedMemory: number; // in MB
   };
+  history: TabMemoryHistory[];
+  isHighMemory: boolean;
 }
 
 export interface Settings {
@@ -23,8 +30,9 @@ export interface Settings {
   memoryThreshold: number; // in MB
   snoozeDuration: number; // in minutes
   refreshInterval: number; // in milliseconds
-  showOverlay: boolean; // whether to show memory overlay on tabs
-  overlayPosition: 'corner' | 'title'; // where to display the overlay
+  showOverlay: boolean;
+  overlayColor: string; // hex color code
+  historyLength: number; // number of history entries to keep
 }
 
 // Chrome API types
