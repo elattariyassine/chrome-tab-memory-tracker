@@ -18,15 +18,18 @@ Here's how the extension looks in action:
 
 ### Theme Support
 
-![Light Mode Interface](images/light-mode.png)
+<img src="images/light-mode.png" alt="Light Mode Interface" style="width: 70%;" />
+
 Clean and modern light theme interface.
 
-![Dark Mode Interface](images/dark-mode.png)
+<img src="images/dark-mode.png" alt="Light Mode Interface" style="width: 70%;" />
+
 Comfortable dark theme for low-light environments.
 
 ### Settings
 
-![Extension Settings](images/settings.png)
+<img src="images/settings.png" alt="Extension Settings Interface" style="width: 70%;" />
+
 Configure your preferences including memory thresholds, auto-reload settings, display options, and theme selection.
 
 ## Development
