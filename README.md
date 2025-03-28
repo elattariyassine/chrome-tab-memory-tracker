@@ -12,9 +12,42 @@ A Chrome extension that helps you monitor and manage memory usage of your browse
 - Memory usage overlay on tab icons
 - Configurable memory thresholds and refresh intervals
 
+## Screenshots
+
+Here's how the extension looks in action:
+
+### Theme Support
+
+![Light Mode Interface](images/light-mode.png)
+
+Clean and modern light theme interface.
+
+![Dark Mode Interface](images/dark-mode.png)
+
+Comfortable dark theme for low-light environments.
+
+### Main Interface
+
+![Tab RAM Tracker Interface](images/tab-details.png)
+
+The main interface shows detailed memory usage information for each tab, including memory history charts and current usage.
+
+### Settings Panel
+
+![Extension Settings](images/settings.png)
+
+Configure your preferences including memory thresholds, auto-reload settings, and display options.
+
+### Additional Settings
+
+![More Settings Options](images/more-settings.png)
+
+Fine-tune your experience with advanced settings and customization options.
+
 ## Development
 
 This project uses:
+
 - React + TypeScript + Vite
 - Chart.js for memory usage visualization
 - Chrome Extension Manifest V3
@@ -39,6 +72,7 @@ This project uses:
 ## Configuration
 
 Users can configure:
+
 - Memory threshold for high memory alerts
 - Auto-reload settings
 - Dark/Light mode

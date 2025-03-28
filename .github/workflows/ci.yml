@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 # Add permissions for the workflow
 permissions:
@@ -16,89 +16,113 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Run linting
-      run: npm run lint
-    
-    - name: Run tests
-      run: npm run test:coverage
-    
-    - name: Build
-      run: npm run build
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Get latest tag
-      id: get_latest_tag
-      run: |
-        latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-        echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
 
-    - name: Increment version
-      id: increment_version
-      if: github.ref == 'refs/heads/main'
-      run: |
-        latest_tag=${{ steps.get_latest_tag.outputs.latest_tag }}
-        if [ "$latest_tag" = "v0.0.0" ]; then
-          new_tag="v1.0.0"
-        else
-          major=$(echo $latest_tag | cut -d. -f1 | tr -d 'v')
-          minor=$(echo $latest_tag | cut -d. -f2)
-          patch=$(echo $latest_tag | cut -d. -f3)
-          new_patch=$((patch + 1))
-          new_tag="v$major.$minor.$new_patch"
-        fi
-        echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Create Git Tag
-      if: github.ref == 'refs/heads/main'
-      run: |
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git config --global user.name "github-actions[bot]"
-        git tag ${{ steps.increment_version.outputs.new_tag }}
-        git push origin ${{ steps.increment_version.outputs.new_tag }}
+      - name: Run linting
+        run: npm run lint
 
-    - name: Create Release
-      if: github.ref == 'refs/heads/main'
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: ${{ steps.increment_version.outputs.new_tag }}
-        name: Release ${{ steps.increment_version.outputs.new_tag }}
-        body: |
-          ## Changes
-          - Automated release for commit ${{ github.sha }}
-          - Built from main branch
-          - Version: ${{ steps.increment_version.outputs.new_tag }}
-        draft: false
-        prerelease: false
-        generate_release_notes: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run tests
+        run: npm run test:coverage
 
-    - name: Create Chrome Extension ZIP
-      if: github.ref == 'refs/heads/main'
-      run: |
-        cd dist
-        zip -r ../tab-ram-tracker-${{ steps.increment_version.outputs.new_tag }}.zip ./*
-        cd ..
+      - name: Build
+        run: npm run build
 
-    - name: Upload Chrome Extension
-      if: github.ref == 'refs/heads/main'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./tab-ram-tracker-${{ steps.increment_version.outputs.new_tag }}.zip
-        asset_name: tab-ram-tracker-${{ steps.increment_version.outputs.new_tag }}.zip
-        asset_content_type: application/zip 
+      - name: Verify build output
+        if: github.ref == 'refs/heads/main'
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "Error: dist directory not found after build"
+            exit 1
+          fi
+          if [ ! -f "dist/manifest.json" ]; then
+            echo "Error: manifest.json not found in dist directory"
+            exit 1
+          fi
+
+      - name: Get latest tag
+        id: get_latest_tag
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
+
+      - name: Increment version
+        id: increment_version
+        if: github.ref == 'refs/heads/main'
+        run: |
+          latest_tag=${{ steps.get_latest_tag.outputs.latest_tag }}
+          if [ "$latest_tag" = "v0.0.0" ]; then
+            new_tag="v1.0.0"
+          else
+            major=$(echo $latest_tag | cut -d. -f1 | tr -d 'v')
+            minor=$(echo $latest_tag | cut -d. -f2)
+            patch=$(echo $latest_tag | cut -d. -f3)
+            new_patch=$((patch + 1))
+            new_tag="v$major.$minor.$new_patch"
+          fi
+          echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
+
+      - name: Create Git Tag
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git tag ${{ steps.increment_version.outputs.new_tag }}
+          git push origin ${{ steps.increment_version.outputs.new_tag }}
+
+      - name: Create Release
+        if: github.ref == 'refs/heads/main'
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.increment_version.outputs.new_tag }}
+          name: Release ${{ steps.increment_version.outputs.new_tag }}
+          body: |
+            ## Changes
+            - Automated release for commit ${{ github.sha }}
+            - Built from main branch
+            - Version: ${{ steps.increment_version.outputs.new_tag }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Chrome Extension ZIP
+        if: github.ref == 'refs/heads/main'
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "Error: dist directory not found"
+            exit 1
+          fi
+          cd dist
+          if ! zip -r ../tab-ram-tracker-${{ steps.increment_version.outputs.new_tag }}.zip ./*; then
+            echo "Error: Failed to create ZIP file"
+            exit 1
+          fi
+          cd ..
+          if [ ! -f "tab-ram-tracker-${{ steps.increment_version.outputs.new_tag }}.zip" ]; then
+            echo "Error: ZIP file was not created"
+            exit 1
+          fi
+
+      - name: Upload Chrome Extension
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./tab-ram-tracker-${{ steps.increment_version.outputs.new_tag }}.zip
+          asset_name: tab-ram-tracker-${{ steps.increment_version.outputs.new_tag }}.zip
+          asset_content_type: application/zip
