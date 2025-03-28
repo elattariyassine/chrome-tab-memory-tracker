@@ -204,7 +204,7 @@ const Popup: React.FC = () => {
   };
 
   return (
-    <div className="w-[400px] h-[600px] flex flex-col bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+    <div className="w-[400px] min-h-[400px] max-h-[600px] flex flex-col bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-2">
@@ -280,7 +280,7 @@ const Popup: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {activeTab === 'tabs' ? (
           isLoading ? (
             <div className="flex items-center justify-center h-32">

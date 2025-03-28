@@ -253,7 +253,7 @@ async function getTabsMemoryInfo() {
       },
       history: [],
       isHighMemory: false,
-    }, memoryUsage, currentSettings.historyLength || 50);
+    }, memoryUsage, currentSettings.historyLength || 10);
 
     tabsInfo.push(tabInfo);
 
